@@ -1,4 +1,5 @@
 # TransbyLight
+
 import numpy as np
 import math
 from PIL import Image
@@ -10,7 +11,7 @@ import cv2
 def ReadFile(filepath):
     binfile = open(filepath, 'rb')
     size = os.path.getsize(filepath)
-    list1=[]据
+    list1=[]
     for i in range(size):
         data = binfile.read(1)
         num=struct.unpack('B',data)
