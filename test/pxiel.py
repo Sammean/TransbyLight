@@ -6,6 +6,7 @@ import os
 from ffmpy import FFmpeg
 import sys
 import cv2
+import copy
 def ReadFile(filepath):
     binfile = open(filepath, 'rb')
     size = os.path.getsize(filepath)
@@ -21,6 +22,23 @@ def ReadFile(filepath):
         #     bb='1'+b[1:8]
         list1.append(b)
     binfile.close()
+    return list1
+def ReadFile_0x(filepath):
+    file_0x=open(filepath,'rb')
+    size=os.path.getsize(filepath)
+    list1=[]
+    for i in range(int(size/2)):
+        data=file_0x.read(2)
+        b=bin(int(data,16))[2:]
+        if(len(b)<8):
+            znum=8-len(b)
+            zero=''
+            for i in range(znum):
+                zero+='0'
+            list1.append(zero+b)
+        else :
+            list1.append(b)
+    file_0x.close()
     return list1
 def AddLocCode(img):
     def BasicCode(x,y,img):
@@ -48,16 +66,16 @@ def AddLocCode(img):
         PrintPixel_10(img,col,70,255)
     for raw in range(0,80,10):
         PrintPixel_10(img,70,raw,255)
-    BasicCode(250,0,img)
+    BasicCode(890,0,img)
     for col in range(0,80,10):
-        PrintPixel_10(img,240+col,70,255)
+        PrintPixel_10(img,880+col,70,255)
     for raw in range(0,80,10):
-        PrintPixel_10(img,240,raw,255)
-    BasicCode(0,250,img)
+        PrintPixel_10(img,880,raw,255)
+    BasicCode(0,890,img)
     for col in range(0,80,10):
-        PrintPixel_10(img,col,240,255)
+        PrintPixel_10(img,col,880,255)
     for raw in range(0,80,10):
-        PrintPixel_10(img,70,240+raw,255)
+        PrintPixel_10(img,70,880+raw,255)
 def PrintPixel_10(img,x,y,color):
     for r in range(10):
         for c in range(10):
@@ -73,40 +91,53 @@ def encode_cube(img,x,y,list):
             x-=80
             y+=10
 def encode(b_list):
-    nEnough=len(b_list)%104
+    nEnough=len(b_list)%1128
     loc=0
-    x=(80,160,0,80,160,240,0,80,160,240,80,160,240)
-    y=(0,0,80,80,80,80,160,160,160,160,240,240,240)
+    x=(0,80,160,240,320,400,480,560,640,720,800,880)
+    y=(0,80,160,240,320,400,480,560,640,720,800,880)
     if nEnough!=0:
-        Picnums=int(len(b_list)/104)+1
-        for i in range(0,104-nEnough):
+        Picnums=int(len(b_list)/1128)+1
+        for i in range(0,1128-nEnough):
             b_list.append('00000000')
     else:
-        Picnums=int(len(b_list)/104)
+        Picnums=int(len(b_list)/1128)
 
     for i in range(0,Picnums):
-        src=Image.new('RGB',(320,320),(255,255,255))
+        src=Image.new('RGB',(960,960),(255,255,255))
         AddLocCode(src)
-        img=Image.new('RGB',(340,340),(255,255,255))
-        img.paste(src,(10,10,330,330))
-        img1=Image.new('RGB',(340,340),(255,255,255))
-        for j in range(0,5):
-            img1.save("D:/test/PicTrans/"+str(j)+".png")
+        img=Image.new('RGB',(980,980),(255,255,255))
+        img.paste(src,(10,10,970,970))
+        img1=Image.new('RGB',(980,980),(255,255,255))
+        for j in range(0,3):
+            img1.save("D:/test/t/"+str(j)+".png")
         for j in range(0,2):
-            img1.save("D:/test/PicTrans/"+str(Picnums+5+j)+".png")
-        for cubes in range(13):
+            img1.save("D:/test/t/"+str(Picnums+3+j)+".png")
+        for cubes1 in range(1,11):
             list_8ch=[]
             for char in range(8):
                 list_8ch.append(b_list[loc])
                 loc+=1
-            encode_cube(src,x[cubes],y[cubes],list_8ch)
-        tmp=Image.new('RGB',(340,340),(255,255,255))
-        img.paste(src,(10,10,330,330))
-        img.save("D:/test/PicTrans/"+str(i+5)+".png")
+            encode_cube(src,x[cubes1],y[0],list_8ch)
+        for cubes_y in range(1,11):
+            for cubes_x in range(12):
+                list_8ch=[]
+                for char in range(8):
+                    list_8ch.append(b_list[loc])
+                    loc+=1
+                encode_cube(src,x[cubes_x],y[cubes_y],list_8ch)
+        for cubes2 in range(1,12):
+            list_8ch=[]
+            for char in range(8):
+                list_8ch.append(b_list[loc])
+                loc+=1
+            encode_cube(src,x[cubes2],y[11],list_8ch)
+        tmp=Image.new('RGB',(980,980),(255,255,255))
+        img.paste(src,(10,10,970,970))
+        img.save("D:/test/t/"+str(i+3)+".png")
 def FFmpegTrans(ofname):
 
     ff=FFmpeg(
-        inputs={'D:/test/PicTrans/%d.png':'-f image2 -r 5'},
+        inputs={'D:/test/PicTrans/%d.png':'-f image2 -r 10'},
         outputs={ofname:'-vcodec mpeg4'}
     )
     ff.run()
@@ -119,7 +150,7 @@ def VideotoPics(VideoPath):
     else:
         rval=False
     while rval:
-        if curFrame%6==0:
+        if curFrame%3==0:
             cv2.imwrite("D:/test/TransPics/"+sort+".png",frame)
             i=ord(sort)
             i+=1
@@ -131,8 +162,16 @@ def VideotoPics(VideoPath):
 def decode(Picpath):
     Piclist = os.listdir(Picpath)
     RecoveryStr=""
-    x=(85,165,5,85,165,245,5,85,165,245,85,165,245)
-    y=(0,0,80,80,80,80,160,160,160,160,240,240,240)
+    t_list=[]
+
+    x=(8,88,168,248,328,408,488,568,648,728,808,888)
+    y=(8,88,168,248,328,408,488,568,648,728,808,888)
+
+    # x=(8,88,168,248,328,408,488,568,648,728,808,888)
+    # y=(13,93,173,253,333,413,493,573,653,733,813,893)
+
+    # x=(83,163,3,83,163,243,3,83,163,243,83,163,243)
+    # y=(7,7,87,87,87,87,167,167,167,167,247,247,247)
     for pic in Piclist:
         if pic.endswith(".png"): 
             datastr="" 
@@ -141,36 +180,210 @@ def decode(Picpath):
             img=cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
             img=cv2.blur(img,(3,3))
             #img=cv2.equalizeHist(img)
-            thd=cv2.threshold(img,160,255,cv2.THRESH_BINARY)
-            cv2.imshow('xx',thd[1])
-            cv2.waitKey(0)
-            for i in range(13):
-                datastr+=decode_cube(thd,x[i],y[i])
+            thd=cv2.threshold(img,120,255,cv2.THRESH_BINARY)
+            # cv2.imshow('xx',thd[1])
+            # cv2.waitKey(0)
+            for cubes1 in range(1,11):
+                datastr+=decode_cube(thd,x[cubes1],y[0])
+            for cubes_y in range(1,11):
+                for cubes_x in range(12):
+                    datastr+=decode_cube(thd,x[cubes_x],y[cubes_y])
+            for cubes2 in range(1,12):
+                datastr+=decode_cube(thd,x[cubes2],y[11])
+            # for i in range(13):
+            #     datastr+=decode_cube(thd,x[i],y[i])
             nums=int(len(datastr)/8)
             begain=0
             lenth=8
-            
-            #t_list=[]
             for i in range(0,nums):
                 ch=datastr[begain:lenth]
+                #if(ch=='00000000'):break
                 #t_list.append(ch)
                 begain=lenth
                 lenth+=8
                 RecoveryStr+=chr(int(ch,2))
+                #RecoveryStr+=hex(int(ch,2))[2:]
     print(RecoveryStr)
-            #encode(t_list)
+    #encode(t_list)
+    # outfile=open("D:/test/output.bin","w")
+    # outfile.write(RecoveryStr)
+    # return t_list
 def decode_cube(img,x,y):
     data=""
     for raw in range(y,y+80,10):
+        if(raw>=960):raw=959
         for col in range(x,x+80,10):
+            if(col>=960):col=959
             if(img[1][raw,col]==255):
                 data+='0'
             else:
                 data+='1'
     return data
+def locatim():
+    files=os.listdir('D:/test/TransPics/')
+    for file in files:
+        image=cv2.imread(os.path.join('D:/test/TransPics/',file))
+        #image=reshape_image(image)
+        image,contours,hierachy=detecte(image)
+        if(len(contours)==0):
+            continue
+        find(image,file,contours,np.squeeze(hierachy))
+def reshape_image(image):
+    '''归一化图片尺寸：短边400，长边不超过800，短边400，长边超过800以长边800为主'''
+    width,height=image.shape[1],image.shape[0]
+    min_len=width
+    scale=width*1.0/400
+    new_width=400
+    new_height=int(height/scale)
+    if new_height>800:
+        new_height=800
+        scale=height*1.0/800
+        new_width=int(width/scale)
+    out=cv2.resize(image,(new_width,new_height))
+    return out
+def detecte(image):
+    '''提取所有轮廓'''
+    gray=cv2.cvtColor(image,cv2.COLOR_BGR2GRAY)
+    _,gray=cv2.threshold(gray,0,255,cv2.THRESH_OTSU+cv2.THRESH_BINARY_INV)
+    contours,hierachy=cv2.findContours(gray,cv2.RETR_TREE,cv2.CHAIN_APPROX_SIMPLE)
+    return image,contours,hierachy
+def compute_1(contours,i,j):
+    '''最外面的轮廓和子轮廓的比例'''
+    area1 = cv2.contourArea(contours[i])
+    area2 = cv2.contourArea(contours[j])
+    if area2==0:
+        return False
+    ratio = area1 * 1.0 / area2
+    if abs(ratio - 49.0 / 25):
+        return True
+    return False
+def compute_2(contours,i,j):
+    '''子轮廓和子子轮廓的比例'''
+    area1 = cv2.contourArea(contours[i])
+    area2 = cv2.contourArea(contours[j])
+    if area2==0:
+        return False
+    ratio = area1 * 1.0 / area2
+    if abs(ratio - 25.0 / 9):
+        return True
+    return False
+def compute_center(contours,i):
+    '''计算轮廓中心点'''
+    M=cv2.moments(contours[i])
+    cx = int(M['m10'] / M['m00'])
+    cy = int(M['m01'] / M['m00'])
+    return cx,cy
+def detect_contours(vec):
+    '''判断这个轮廓和它的子轮廓以及子子轮廓的中心的间距是否足够小'''
+    distance_1=np.sqrt((vec[0]-vec[2])**2+(vec[1]-vec[3])**2)
+    distance_2=np.sqrt((vec[0]-vec[4])**2+(vec[1]-vec[5])**2)
+    distance_3=np.sqrt((vec[2]-vec[4])**2+(vec[3]-vec[5])**2)
+    if sum((distance_1,distance_2,distance_3))/3<3:
+        return True
+    return False
+def juge_angle(rec):
+    '''判断寻找是否有三个点可以围成等腰直角三角形'''
+    if len(rec)<3:
+        return -1,-1,-1
+    for i in range(len(rec)):
+        for j in range(i+1,len(rec)):
+            for k in range(j+1,len(rec)):
+                distance_1 = np.sqrt((rec[i][0] - rec[j][0]) ** 2 + (rec[i][1] - rec[j][1]) ** 2)
+                distance_2 = np.sqrt((rec[i][0] - rec[k][0]) ** 2 + (rec[i][1] - rec[k][1]) ** 2)
+                distance_3 = np.sqrt((rec[j][0] - rec[k][0]) ** 2 + (rec[j][1] - rec[k][1]) ** 2)
+                if abs(distance_1-distance_2)<5:
+                    if abs(np.sqrt(np.square(distance_1)+np.square(distance_2))-distance_3)<5:
+                        return i,j,k
+                elif abs(distance_1-distance_3)<5:
+                    if abs(np.sqrt(np.square(distance_1)+np.square(distance_3))-distance_2)<5:
+                        return i,j,k
+                elif abs(distance_2-distance_3)<5:
+                    if abs(np.sqrt(np.square(distance_2)+np.square(distance_3))-distance_1)<5:
+                        return i,j,k
+    return -1,-1,-1
+def find(image,image_name,contours,hierachy,root=0):
+    '''找到符合要求的轮廓'''
+    rec=[]
+    for i in range(len(hierachy)):
+        child = hierachy[i][2]
+        child_child=hierachy[child][2]
+        if child!=-1 and hierachy[child][2]!=-1:
+            if compute_1(contours, i, child) and compute_2(contours,child,child_child):
+                cx1,cy1=compute_center(contours,i)
+                cx2,cy2=compute_center(contours,child)
+                cx3,cy3=compute_center(contours,child_child)
+                if detect_contours([cx1,cy1,cx2,cy2,cx3,cy3]):
+                    rec.append([cx1,cy1,cx2,cy2,cx3,cy3,i,child,child_child])
+    '''计算得到所有在比例上符合要求的轮廓中心点'''
+    i,j,k=juge_angle(rec)
+    if i==-1 or j== -1 or k==-1:
+        return
+    ts = np.concatenate((contours[rec[i][6]], contours[rec[j][6]], contours[rec[k][6]]))
+    rect = cv2.minAreaRect(ts)
+    box = cv2.boxPoints(rect)
+    box = np.int0(box)
+    result=copy.deepcopy(image)
+    # cv2.imshow('s',result)     
+    #cv2.drawContours(result, [box], 0, (0, 0, 255), 2)
+    #result=crop(result,box)
+    result=rotate_bound(result,90+rect[2])
+    # cv2.imshow('r',result)     
+    result=crop(result,box)
+    # cv2.imshow('rr',result)
+    # cv2.waitKey(0)
+    result=cv2.resize(result,(960,960))
+    cv2.imwrite("D:/test/Processed/"+image_name,result)
+    return
+def crop(result,box):
 
-# b_list=ReadFile("D:/test/test.bin")        
+    Xs = [i[0] for i in box]
+    Ys = [i[1] for i in box]
+    Xs.sort()
+    Ys.sort()
+    x1 = Xs[1]
+    x2 = Xs[3]
+    y1 = Ys[1]
+    y2 = Ys[3]
+    hight = y2 - y1
+    width = x2 - x1
+    cropImg = result[y1:y1+hight, x1:x1+width]
+    # cv2.imshow('cp',cropImg)
+    # cv2.waitKey(0)
+    return cropImg
+def rotate_bound(image, angle):    
+
+    (h, w) = image.shape[:2]    
+    (cX, cY) = (w // 2, h // 2)      
+    M = cv2.getRotationMatrix2D((cX, cY), angle, 1.0)    
+    cos = np.abs(M[0, 0])    
+    sin = np.abs(M[0, 1])        
+    nW = int((h * sin) + (w * cos))    
+    nH = int((h * cos) + (w * sin))       
+    M[0, 2] += (nW / 2) - cX    
+    M[1, 2] += (nH / 2) - cY       
+    return cv2.warpAffine(image, M, (nW, nH))
+def valid(b_list,r_list):
+    f_list=[]
+    for i in range(min(len(b_list),len(r_list))):
+        for j in range(8):
+            if(b_list[i][j]==r_list[i][j]):
+                f_list.append('1')
+            else:
+                f_list.append('0')
+    vfile=open("D:/test/valid.bin","w")
+    for i in range(len(f_list)):
+        vfile.write(f_list[i])
+    
+
+
+# if __name__ == '__main__':
+
+#b_list=ReadFile_0x("D:/test/test.bin")
+
+#b_list=ReadFile("D:/test/test.bin")        
 # encode(b_list)
-# FFmpegTrans("D:/test/output/t.mp4")
+#FFmpegTrans("D:/test/output/t.mp4")
 #VideotoPics("D:/test/t.mp4")
-#decode("D:/test/Processed/")
+#locatim()
+r_list=decode("D:/test/Processed/")
+# valid(b_list,r_list)
