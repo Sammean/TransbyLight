@@ -1,3 +1,4 @@
+import random
 import numpy as np
 import math
 from PIL import Image
@@ -7,7 +8,7 @@ from ffmpy import FFmpeg
 import sys
 import cv2
 import copy
-def ReadFile(filepath):
+def ReadFile_asc(filepath):
     binfile = open(filepath, 'rb')
     size = os.path.getsize(filepath)
     list1=[]
@@ -23,23 +24,17 @@ def ReadFile(filepath):
         list1.append(b)
     binfile.close()
     return list1
-def ReadFile_0x(filepath):
-    file_0x=open(filepath,'rb')
-    size=os.path.getsize(filepath)
+def ReadFile_hex(filepath):
+    fx = open(filepath, 'rb')
+    size = os.path.getsize(filepath)
     list1=[]
-    for i in range(int(size/2)):
-        data=file_0x.read(2)
-        b=bin(int(data,16))[2:]
-        if(len(b)<8):
-            znum=8-len(b)
-            zero=''
-            for i in range(znum):
-                zero+='0'
-            list1.append(zero+b)
-        else :
-            list1.append(b)
-    file_0x.close()
+    for i in range(int(size/4)):
+        data=fx.read(4)
+        data=data.hex()
+        b = '{:08b}'.format(int(data,16))
+        list1.append(b)
     return list1
+
 def AddLocCode(img):
     def BasicCode(x,y,img):
         for col in range(0,70,10):
@@ -109,9 +104,9 @@ def encode(b_list):
         img.paste(src,(10,10,970,970))
         img1=Image.new('RGB',(980,980),(255,255,255))
         for j in range(0,3):
-            img1.save("D:/test/t/"+str(j)+".png")
+            img1.save("D:/test1/t/"+str(j)+".png")
         for j in range(0,2):
-            img1.save("D:/test/t/"+str(Picnums+3+j)+".png")
+            img1.save("D:/test1/t/"+str(Picnums+3+j)+".png")
         for cubes1 in range(1,11):
             list_8ch=[]
             for char in range(8):
@@ -133,11 +128,11 @@ def encode(b_list):
             encode_cube(src,x[cubes2],y[11],list_8ch)
         tmp=Image.new('RGB',(980,980),(255,255,255))
         img.paste(src,(10,10,970,970))
-        img.save("D:/test/t/"+str(i+3)+".png")
+        img.save("D:/test1/t/"+str(i+3)+".png")
 def FFmpegTrans(ofname):
 
     ff=FFmpeg(
-        inputs={'D:/test/PicTrans/%d.png':'-f image2 -r 10'},
+        inputs={'D:/test1/PicTrans/%d.png':'-f image2 -r 5'},
         outputs={ofname:'-vcodec mpeg4'}
     )
     ff.run()
@@ -150,8 +145,8 @@ def VideotoPics(VideoPath):
     else:
         rval=False
     while rval:
-        if curFrame%3==0:
-            cv2.imwrite("D:/test/TransPics/"+sort+".png",frame)
+        if curFrame%6==0:
+            cv2.imwrite("D:/test1/TransPics/"+sort+".png",frame)
             i=ord(sort)
             i+=1
             sort=chr(i)
@@ -163,9 +158,11 @@ def decode(Picpath):
     Piclist = os.listdir(Picpath)
     RecoveryStr=""
     t_list=[]
-
+    
     x=(8,88,168,248,328,408,488,568,648,728,808,888)
-    y=(8,88,168,248,328,408,488,568,648,728,808,888)
+    y=(3,83,163,243,323,403,483,563,643,723,803,883)
+    # x=(8,88,168,248,328,408,488,568,648,728,808,888)
+    # y=(8,88,168,248,328,408,488,568,648,728,808,888)
 
     # x=(8,88,168,248,328,408,488,568,648,728,808,888)
     # y=(13,93,173,253,333,413,493,573,653,733,813,893)
@@ -176,11 +173,13 @@ def decode(Picpath):
         if pic.endswith(".png"): 
             datastr="" 
             src = cv2.imread(Picpath+pic)
-            #src=src[5:165,5:165]
+            #src=src[10:970,10:970]
+            # cv2.imshow('x',src)
+            # cv2.waitKey(0)
             img=cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
             img=cv2.blur(img,(3,3))
             #img=cv2.equalizeHist(img)
-            thd=cv2.threshold(img,120,255,cv2.THRESH_BINARY)
+            thd=cv2.threshold(img,160,255,cv2.THRESH_BINARY)
             # cv2.imshow('xx',thd[1])
             # cv2.waitKey(0)
             for cubes1 in range(1,11):
@@ -198,16 +197,16 @@ def decode(Picpath):
             for i in range(0,nums):
                 ch=datastr[begain:lenth]
                 #if(ch=='00000000'):break
-                #t_list.append(ch)
+                t_list.append(ch)
                 begain=lenth
                 lenth+=8
                 RecoveryStr+=chr(int(ch,2))
                 #RecoveryStr+=hex(int(ch,2))[2:]
-    print(RecoveryStr)
-    #encode(t_list)
-    # outfile=open("D:/test/output.bin","w")
-    # outfile.write(RecoveryStr)
-    # return t_list
+    #print(RecoveryStr)
+    encode(t_list)
+    outfile=open("D:/test1/output.bin","w",encoding='utf-8')
+    outfile.write(RecoveryStr)
+    return t_list
 def decode_cube(img,x,y):
     data=""
     for raw in range(y,y+80,10):
@@ -219,10 +218,10 @@ def decode_cube(img,x,y):
             else:
                 data+='1'
     return data
-def locatim():
-    files=os.listdir('D:/test/TransPics/')
+def locim():
+    files=os.listdir('D:/test1/TransPics/')
     for file in files:
-        image=cv2.imread(os.path.join('D:/test/TransPics/',file))
+        image=cv2.imread(os.path.join('D:/test1/TransPics/',file))
         #image=reshape_image(image)
         image,contours,hierachy=detecte(image)
         if(len(contours)==0):
@@ -326,13 +325,13 @@ def find(image,image_name,contours,hierachy,root=0):
     # cv2.imshow('s',result)     
     #cv2.drawContours(result, [box], 0, (0, 0, 255), 2)
     #result=crop(result,box)
-    result=rotate_bound(result,90+rect[2])
+    #result=rotate_bound(result,90+rect[2])
     # cv2.imshow('r',result)     
     result=crop(result,box)
     # cv2.imshow('rr',result)
     # cv2.waitKey(0)
     result=cv2.resize(result,(960,960))
-    cv2.imwrite("D:/test/Processed/"+image_name,result)
+    cv2.imwrite("D:/test1/Processed/"+image_name,result)
     return
 def crop(result,box):
 
@@ -362,28 +361,37 @@ def rotate_bound(image, angle):
     M[0, 2] += (nW / 2) - cX    
     M[1, 2] += (nH / 2) - cY       
     return cv2.warpAffine(image, M, (nW, nH))
-def valid(b_list,r_list):
+def valid(b_list,r_list,ofname):
+    vfile=open(ofname,"wb")
     f_list=[]
     for i in range(min(len(b_list),len(r_list))):
+        ch=''
         for j in range(8):
             if(b_list[i][j]==r_list[i][j]):
-                f_list.append('1')
+                ch+='1'
             else:
-                f_list.append('0')
-    vfile=open("D:/test/valid.bin","w")
-    for i in range(len(f_list)):
-        vfile.write(f_list[i])
-    
+                ch+='0'
+        ch=bin(ch)
+        vfile.write(hex(int(ch,2)))
+def wuma():
+    for i in range(3,9):
+        src1 = cv2.imread("D:/test/PicTrans/"+str(i)+".png")
+        src2 = cv2.imread("D:/test/t/"+str(i)+".png")
+        # src1=src1[5:165,5:165]
+        # thd=cv2.threshold(src2,165,255,cv2.THRESH_BINARY)[1]
+        src = cv2.bitwise_xor(src2, src1)
+        cv2.imwrite("D:/test/xor/"+str(i)+".png",src)
+        # cv2.imshow("src",src1)
+        # cv2.imshow("xor", src)
+        # cv2.waitKey(0)    
 
 
-# if __name__ == '__main__':
-
-#b_list=ReadFile_0x("D:/test/test.bin")
-
-#b_list=ReadFile("D:/test/test.bin")        
-# encode(b_list)
-#FFmpegTrans("D:/test/output/t.mp4")
-#VideotoPics("D:/test/t.mp4")
-#locatim()
-r_list=decode("D:/test/Processed/")
-# valid(b_list,r_list)
+if __name__ == '__main__':
+    #b_list=ReadFile_hex("D:/test1/1.bin")
+    #b_list=ReadFile("D:/test1/1.bin")        
+    #encode(b_list)
+    #FFmpegTrans("D:/test1/output/t.mp4")
+    # VideotoPics("D:/test1/tt.mp4")
+    # locim()
+    r_list=decode("D:/test1/Processed/")
+    #valid(b_list,r_list,"D:/test1/valid.bin")
