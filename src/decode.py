@@ -6,9 +6,11 @@ import os
 import sys
 import cv2
 import copy
+import re
 def VideotoPics(VideoPath):
     video=cv2.VideoCapture(VideoPath)
     i=0
+    nums=0
     curFrame=0
     if video.isOpened():
         rval,frame=video.read()
@@ -16,22 +18,26 @@ def VideotoPics(VideoPath):
         rval=False
     while rval:
         if curFrame%6==0:
-            cv2.imwrite("D:/ct/"+str(i)+".png",frame)
+            cv2.imwrite("D:/"+str(i)+".png",frame)
+            nums+=1
             i+=1
         curFrame+=1
         rval,frame=video.read()
 
     video.release()
-def locim():
-    files=os.listdir("D:/ct/")
+    return nums
+def locim(nums):
+    files=os.listdir("D:/")
     for file in files:
         if file.endswith('.png'):
-            image=cv2.imread(os.path.join('D:/ct/',file))
+            image=cv2.imread(os.path.join('D:/',file))
             #image=reshape_image(image)
             image,contours,hierachy=detecte(image)
             if(len(contours)==0):
                 continue
             find(image,file,contours,np.squeeze(hierachy))
+    for i in range(nums):
+        os.remove("D:/"+str(i)+".png")
 def reshape_image(image):
     '''归一化图片尺寸：短边400，长边不超过800，短边400，长边超过800以长边800为主'''
     width,height=image.shape[1],image.shape[0]
@@ -166,50 +172,56 @@ def rotate_bound(image, angle):
     M[0, 2] += (nW / 2) - cX    
     M[1, 2] += (nH / 2) - cY       
     return cv2.warpAffine(image, M, (nW, nH))
-def valid(b_list,r_list,ofname):
-    vfile=open(ofname,"wb")
-    f_list=[]
-    for i in range(min(len(b_list),len(r_list))):
-        ch=''
-        for j in range(8):
-            if(b_list[i][j]==r_list[i][j]):
-                ch+='1'
-            else:
+def valid(img,x,y):
+    ch=''
+    for raw in range(y,y+80,10):
+        if(raw>=960):raw=959
+        for col in range(x,x+80,10):
+            
+            if(col>=960):col=959
+            if(img[raw,col]>120 and img[raw,col]<220):
                 ch+='0'
-        vfile.write(struct.pack('B',int(ch,2)))
-def decode(outfile):
+            else:
+                ch+='1'
+    return ch
+def decode(outfile,vfile):
     Piclist = os.listdir(os.path.split(os.path.realpath(__file__))[0])
-    nums=len(Piclist)+5
-    RecoveryStr=""
+    nums=len(Piclist)+6
     t_list=[]
     outfile=open(outfile,"wb")
+    vfile=open(vfile,"ab")
     x=(5,85,165,245,325,405,485,565,645,725,805,885)
-    y=(3,83,163,243,323,403,483,563,643,723,803,883)
+    y=(7,87,167,247,327,407,487,567,647,727,807,887)
     for pic in range(nums):    
         src = cv2.imread(str(pic)+'.png')
         if(src is None):
             continue
         datastr="" 
+        valstr=""
         img=cv2.cvtColor(src, cv2.COLOR_BGR2GRAY)
         img=cv2.blur(img,(3,3))
         thd=cv2.threshold(img,160,255,cv2.THRESH_BINARY)
         for cubes1 in range(1,11):
+            valstr+=valid(img,x[cubes1],y[0])
             datastr+=decode_cube(thd,x[cubes1],y[0])
         for cubes_y in range(1,11):
             for cubes_x in range(12):
+                valstr+=valid(img,x[cubes_x],y[cubes_y])
                 datastr+=decode_cube(thd,x[cubes_x],y[cubes_y])
         for cubes2 in range(1,12):
+            valstr+=valid(img,x[cubes2],y[11])
             datastr+=decode_cube(thd,x[cubes2],y[11])
         nums=int(len(datastr)/8)
         begain=0
         lenth=8
         for i in range(0,nums):
             ch=datastr[begain:lenth]
+            v=valstr[begain:lenth]
             t_list.append(ch)
             begain=lenth
             lenth+=8
             outfile.write(struct.pack('B',int(ch,2)))
-    return t_list
+            vfile.write(struct.pack('B',int(v,2)))
 def decode_cube(img,x,y):
     data=""
     for raw in range(y,y+80,10):
@@ -221,17 +233,16 @@ def decode_cube(img,x,y):
             else:
                 data+='1'
     return data
-
+def Delete():
+    Piclist = os.listdir(os.path.abspath('.'))
+    for pic in Piclist:
+        if pic.endswith(".png"):
+            os.remove(os.path.abspath('.')+"\\"+pic)
+    
 def main(argv):
-    VideotoPics(argv[1])
-    locim()
-    r_list=decode(argv[2])
-    fsize=int(os.path.getsize("D:/ct/blist.txt")/8)
-    bf=open("D:/ct/blist.txt",'r')
-    b_list=[]
-    for i in range(fsize):
-        b_list.append(bf.read(8))
-    valid(b_list,r_list,argv[3])
+    nums=VideotoPics(argv[1])
+    locim(nums)
+    decode(argv[2],argv[3])
+    Delete()
 
-if __name__ == '__main__':
-    main(sys.argv)
+main(sys.argv)

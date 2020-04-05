@@ -7,6 +7,7 @@ from ffmpy import FFmpeg
 import sys
 import cv2
 import copy
+import re
 def ReadFile_hex(filepath):
     fx = open(filepath, 'rb')
     size = os.path.getsize(filepath)
@@ -68,10 +69,10 @@ def encode_cube(img,x,y,list):
             x-=80
             y+=10
 def encode(b_list,vlen):
+    nEnough=len(b_list)%1128
     loc=0
     x=(0,80,160,240,320,400,480,560,640,720,800,880)
     y=(0,80,160,240,320,400,480,560,640,720,800,880)
-    nEnough=len(b_list)%1128
     if nEnough!=0:
         Picnums=int(len(b_list)/1128)+1
         for i in range(0,1128-nEnough):
@@ -79,7 +80,7 @@ def encode(b_list,vlen):
     else:
         Picnums=int(len(b_list)/1128)
     if(Picnums>vlen/1000*5):
-        Picnums=vlen/1000*5
+        Picnums=int(vlen/1000*5)-1
     for i in range(0,Picnums):
         src=Image.new('RGB',(960,960),(255,255,255))
         AddLocCode(src)
@@ -112,22 +113,23 @@ def encode(b_list,vlen):
         tmp=Image.new('RGB',(980,980),(255,255,255))
         img.paste(src,(10,10,970,970))
         img.save(str(i+3)+".png")
+    return Picnums+5
 def FFmpegTrans(ofname):
     ff=FFmpeg(
         inputs={'%d.png':'-f image2 -r 5'},
         outputs={ofname:'-vcodec mpeg4'}
     )
     ff.run()
-
+def DeleteImgs(Picnums):
+    for i in range(Picnums):
+        os.remove(str(i)+".png")
 def main(argv):
     binfile=sys.argv[1]
     outfile=sys.argv[2]
     videolen=int(sys.argv[3],10)
     b_list=ReadFile_hex(binfile)
-    bf=open("D:/ct/blist.txt",'w')
-    for i in b_list:
-        bf.write(i)
-    encode(b_list,videolen)
+    Picnums=encode(b_list,videolen)
     FFmpegTrans(outfile)
-if __name__ == '__main__':
-    main(sys.argv)
+    DeleteImgs(Picnums)
+main(sys.argv)
+
